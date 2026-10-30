@@ -38,3 +38,4 @@ jobs:
             curl --fail --silent --show-error --retry 3 "https://$host/" --output /dev/null
             curl --fail --silent --show-error --retry 3 "https://$host/api/health" |
               node --input-type=module -e 'import assert from "node:assert/strict"; let body = ""; for await (const chunk of process.stdin) body += chunk; const health = JSON.parse(body); assert.equal(health.ok, true); assert.equal(health.assets, true); assert.equal(health.auth, "bearer");'
+          done
