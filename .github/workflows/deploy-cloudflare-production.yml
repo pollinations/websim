@@ -30,12 +30,14 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
-      - name: Verify both existing domains
+      - name: Verify app, legacy alias, and redirect
         shell: bash
         run: |
           set -euo pipefail
-          for host in websim.pollinations.ai websim.myceli.ai; do
+          for host in websim.pollinations.app websim.myceli.ai; do
             curl --fail --silent --show-error --retry 3 "https://$host/" --output /dev/null
             curl --fail --silent --show-error --retry 3 "https://$host/api/health" |
               node --input-type=module -e 'import assert from "node:assert/strict"; let body = ""; for await (const chunk of process.stdin) body += chunk; const health = JSON.parse(body); assert.equal(health.ok, true); assert.equal(health.assets, true); assert.equal(health.auth, "bearer");'
           done
+          redirect=$(curl --silent --show-error --output /dev/null --write-out '%{http_code} %{redirect_url}' 'https://websim.pollinations.ai/smoke-test/?model=openai-fast')
+          test "$redirect" = '301 https://websim.pollinations.app/smoke-test/?model=openai-fast'

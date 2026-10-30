@@ -36,17 +36,19 @@ always from the `production` branch. Configure the repository variable
 generation uses each signed-in user's Pollen.
 
 The deployment token needs **Editor** access only to the existing `websim` Worker.
-Its custom domains, `websim.pollinations.ai` and `websim.myceli.ai`, stay managed in
-Cloudflare. CI updates the Worker without changing its domain registrations.
-`websim.pollinations.app` is a later, separate domain migration.
+The primary address is `https://websim.pollinations.app`. Cloudflare manages its
+custom domain and the exact route `websim.pollinations.app/*` to `websim`, which
+takes precedence over Gen's shared `*.pollinations.app/*` route. Keep these domain
+settings in Cloudflare so CI needs no zone-wide permissions.
 
-Automatic deployments stay off until the monorepo deployment registration has
-been removed from its `production` branch. For the first deployment, check that
-the monorepo has no running Websim deployment, then dispatch this repository's
-production workflow manually. Verify the active Worker version, assets, login,
-and a real generation before removing the monorepo copy. Set the repository
-variable `AUTO_DEPLOY` to `true` after the handoff; subsequent pushes to
-`production` deploy automatically. Promote changes from `main` through a PR.
+`websim.pollinations.ai` redirects to `.app` with HTTP 301, preserving the path
+and query string. The existing `websim.myceli.ai` alias remains available.
+The app key's allowed login callbacks must include `https://websim.pollinations.app/`.
+
+With the repository variable `AUTO_DEPLOY=true`, pushes to `production` deploy
+automatically. Promote changes from `main` through a PR. The workflow checks the
+app, legacy alias, and old-domain redirect after deployment. Manual dispatch is
+also available from `production`.
 
 For rollback, revert the affected commit and promote it to `production` through
 GitHub Actions. Keep automatic deployments under a single repository's ownership.
