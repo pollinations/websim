@@ -64,6 +64,8 @@ Actions, with repository variable `AUTO_DEPLOY=true` and environment secret
 `POLLINATIONS_API_KEY`. Promote `main` to `production` through a PR. Never put the
 deployment key in Vite/browser config.
 
+CI calls the [shared Sites workflow](https://github.com/pollinations/pollinations/blob/154eec6262d09d1c034c1984caa4503fd3baca75/.github/workflows/deploy-pollinations-site.yml), pinned to a reviewed commit. It builds and tests without the deployment key, then publishes and verifies every file on a separate runner using the published CLI. Reverting the workflow change restores the previous deployment procedure.
+
 `websim.pollinations.app` is served by Sites. `websim.pollinations.ai` redirects
 there with HTTP 301, preserving paths and query strings. Login, generation,
 downloads and deployed assets have been verified. The old Worker is retained
