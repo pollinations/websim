@@ -2,14 +2,17 @@
     "name": "websim.pollinations.ai",
     "private": true,
     "version": "0.0.0",
-    "description": "Worker-backed Websim app for generating shareable HTML pages with Pollinations.",
-    "main": "worker.js",
+    "description": "Static BYOP app for generating shareable HTML pages with Pollinations.",
     "type": "module",
     "scripts": {
-        "dev": "npm run build && wrangler dev worker.js --local",
+        "dev": "vite",
         "build": "vite build",
-        "deploy": "npm run build && wrangler deploy worker.js",
-        "typecheck": "tsc --noEmit"
+        "deploy": "npm run build && polli sites deploy dist --name websim",
+        "typecheck": "tsc --noEmit",
+        "preview": "vite preview",
+        "test": "node --test test/*.test.js",
+        "test:live": "node scripts/test-live.mjs",
+        "test:browser": "node scripts/test-browser.mjs"
     },
     "dependencies": {
         "@pollinations/sdk": "5.1.0-alpha.25",
@@ -25,6 +28,7 @@
         "tailwindcss": "^4.0.0",
         "typescript": "^5.7.2",
         "vite": "^7.0.0",
-        "wrangler": "^4.14.1"
+        "@pollinations/cli": "0.1.71",
+        "playwright": "1.62.1"
     }
 }

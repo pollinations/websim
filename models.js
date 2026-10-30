@@ -22,5 +22,3 @@ export const WEB_SIM_MODELS = /** @type {const} */ ([
         detail: "More complete HTML",
     },
 ]);
-
-export const ALLOWED_MODEL_IDS = WEB_SIM_MODELS.map((model) => model.id);
