@@ -34,7 +34,7 @@ jobs:
         run: |
           set -euo pipefail
           for file in dist/index.html dist/assets/*; do
-            curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            curl --fail --location --silent --show-error --retry 5 --retry-all-errors \
               --retry-delay 5 --max-time 30 \
               "https://websim.pollinations.app/${file#dist/}" --output /tmp/websim-asset
             cmp "$file" /tmp/websim-asset
