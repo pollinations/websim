@@ -59,17 +59,18 @@ Use the published CLI included in this repository (`npm run deploy` does both).
 The owning account is `polli@pollinations.ai`; Sites requires `account:machines`.
 No Cloudflare credential is needed by the app's final deployment workflow.
 
-**Deploy / Pollinations production** runs from `production` in GitHub Actions,
-using its environment secret `POLLINATIONS_API_KEY`. Keep `AUTO_DEPLOY` unset until
-cutover is verified; then enable it for pushes to `production`. Promote `main`
-to `production` through a PR. Never put the deployment key in Vite/browser config.
+**Deploy / Pollinations production** runs on pushes to `production` in GitHub
+Actions, with repository variable `AUTO_DEPLOY=true` and environment secret
+`POLLINATIONS_API_KEY`. Promote `main` to `production` through a PR. Never put the
+deployment key in Vite/browser config.
 
-The Sites cutover is still pending. Preserve the current Worker until the Site,
-login callback, generation, prompt links and assets are verified. The exact
-Cloudflare route currently serving `websim.pollinations.app/*` must be handed
-back to Sites, and `.ai` should redirect with paths/query strings preserved.
-Check remaining raw API clients before retiring the old Worker. Rollback restores
-the old route and disables the Sites workflow; retain the old Worker for this.
+CI calls the [shared Sites workflow](https://github.com/pollinations/pollinations/blob/154eec6262d09d1c034c1984caa4503fd3baca75/.github/workflows/deploy-pollinations-site.yml), pinned to a reviewed commit. It builds and tests without the deployment key, then publishes and verifies every file on a separate runner using the published CLI. Reverting the workflow change restores the previous deployment procedure.
+
+`websim.pollinations.app` is served by Sites. `websim.pollinations.ai` redirects
+there with HTTP 301, preserving paths and query strings. Login, generation,
+downloads and deployed assets have been verified. The old Worker is retained
+for rollback and a remaining raw API client audit. Rollback disables the redirect
+and Sites workflow and restores the `.app` route to the old Worker.
 
 ## Catalog submission
 
