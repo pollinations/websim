@@ -2,10 +2,8 @@ name = "websim"
 main = "worker.js"
 compatibility_date = "2026-05-01"
 
-routes = [
-  { pattern = "websim.myceli.ai", zone_name = "myceli.ai", custom_domain = true },
-  { pattern = "websim.pollinations.ai", zone_name = "pollinations.ai", custom_domain = true }
-]
+# Existing custom domains stay managed in Cloudflare; CI only updates the Worker.
+workers_dev = false
 
 [assets]
 directory = "dist"

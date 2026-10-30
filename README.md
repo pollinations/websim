@@ -35,8 +35,9 @@ always from the `production` branch. Configure the repository variable
 `CLOUDFLARE_API_TOKEN`. The app itself stores no server-side Pollinations key;
 generation uses each signed-in user's Pollen.
 
-The existing Cloudflare Worker is `websim`, serving `websim.pollinations.ai` and
-`websim.myceli.ai`. Both remain unchanged during repository migration.
+The deployment token needs **Editor** access only to the existing `websim` Worker.
+Its custom domains, `websim.pollinations.ai` and `websim.myceli.ai`, stay managed in
+Cloudflare. CI updates the Worker without changing its domain registrations.
 `websim.pollinations.app` is a later, separate domain migration.
 
 Automatic deployments stay off until the monorepo deployment registration has
