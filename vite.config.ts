@@ -4,7 +4,9 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
     plugins: [react(), tailwindcss()],
-    base: "./",
+    base: "/",
+    server: { host: "localhost", port: 16386, strictPort: true },
+    preview: { host: "localhost", port: 16386, strictPort: true },
     resolve: {
         dedupe: ["react", "react-dom"],
     },

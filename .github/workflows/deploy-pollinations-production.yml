@@ -1,0 +1,41 @@
+name: Deploy / Pollinations production
+
+on:
+  push:
+    branches: [production]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: websim-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/production' && (github.event_name == 'workflow_dispatch' || vars.AUTO_DEPLOY == 'true')
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Publish Websim
+        env:
+          POLLINATIONS_API_KEY: ${{ secrets.POLLINATIONS_API_KEY }}
+        run: npm run deploy
+      - name: Verify deployed files
+        run: |
+          set -euo pipefail
+          for file in dist/index.html dist/assets/*; do
+            curl --fail --location --silent --show-error --retry 5 --retry-all-errors \
+              --retry-delay 5 --max-time 30 \
+              "https://websim.pollinations.app/${file#dist/}" --output /tmp/websim-asset
+            cmp "$file" /tmp/websim-asset
+          done
