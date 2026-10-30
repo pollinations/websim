@@ -1,4 +1,8 @@
-import { useAuthActions, useAuthState } from "@pollinations/sdk/react";
+import {
+    useAuthActions,
+    useAuthState,
+    useTextGeneration,
+} from "@pollinations/sdk/react";
 import {
     AppIcon,
     Button,
@@ -17,27 +21,16 @@ import {
     Tooltip,
 } from "@pollinations/ui";
 import { AppUserMenu } from "@pollinations/ui/app-user-menu/sdk";
-import { useEffect, useRef, useState } from "react";
-import { DEFAULT_MODEL, WEB_SIM_MODELS, type WebsimModelId } from "./config";
-
-const INITIAL_PROMPT =
-    "A tiny interactive museum for impossible plants, with a collection wall, specimen cards, and a night mode.";
-
-function stripHtml(value: string) {
-    const document = new DOMParser().parseFromString(value, "text/html");
-    return (
-        document.body.textContent ||
-        document.documentElement.textContent ||
-        ""
-    )
-        .replace(/\s+/g, " ")
-        .trim();
-}
-
-function errorMessage(error: unknown) {
-    if (error instanceof Error) return error.message;
-    return String(error || "Generation failed");
-}
+import madeWithBadge from "@pollinations/ui/brand/badge-made-with.svg";
+import { useState } from "react";
+import { WEB_SIM_MODELS, type WebsimModelId } from "./config";
+import {
+    extractGeneratedHtml,
+    launchOptions,
+    PREVIEW_SANDBOX,
+    previewDocument,
+    SYSTEM_PROMPT,
+} from "./websim.js";
 
 function saveHtml(html: string) {
     const blobUrl = URL.createObjectURL(
@@ -54,7 +47,7 @@ function saveHtml(html: string) {
 
 function openHtml(html: string) {
     const blobUrl = URL.createObjectURL(
-        new Blob([html], { type: "text/html;charset=utf-8" }),
+        new Blob([previewDocument(html)], { type: "text/html;charset=utf-8" }),
     );
     window.open(blobUrl, "_blank", "noopener,noreferrer");
     window.setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
@@ -108,7 +101,7 @@ function PreviewPanel({
                     <iframe
                         title="Generated Websim page"
                         srcDoc={html}
-                        sandbox="allow-forms allow-modals allow-popups allow-scripts"
+                        sandbox={PREVIEW_SANDBOX}
                         className="websim-preview-frame h-full w-full border-0 bg-white"
                     />
                 ) : (
@@ -129,78 +122,52 @@ function PreviewPanel({
 }
 
 export function App() {
-    const { apiKey, isHydrated } = useAuthState();
+    const { isHydrated } = useAuthState();
+    return isHydrated ? (
+        <Websim />
+    ) : (
+        <p role="status" className="p-4">
+            Loading Websim…
+        </p>
+    );
+}
+
+function Websim() {
+    const { apiKey } = useAuthState();
     const { login } = useAuthActions();
-    const [prompt, setPrompt] = useState(INITIAL_PROMPT);
-    const [model, setModel] = useState<WebsimModelId>(DEFAULT_MODEL);
-    const [html, setHtml] = useState("");
-    const [error, setError] = useState<string | null>(null);
-    const [isGenerating, setIsGenerating] = useState(false);
-    const activeRequest = useRef<AbortController | null>(null);
+    const [initial] = useState(() => launchOptions(window.location.href));
+    const [prompt, setPrompt] = useState(initial.prompt);
+    const [model, setModel] = useState<WebsimModelId>(initial.model);
+    const {
+        data,
+        error,
+        isLoading: isGenerating,
+        run,
+        cancel,
+    } = useTextGeneration();
+    const html =
+        data === null || isGenerating ? "" : extractGeneratedHtml(data);
 
-    useEffect(() => {
-        return () => activeRequest.current?.abort();
-    }, []);
-
-    async function generate() {
+    function generate() {
         const trimmedPrompt = prompt.trim();
         if (!trimmedPrompt) return;
         if (!apiKey) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("prompt", trimmedPrompt);
+            url.searchParams.set("model", model);
+            window.history.replaceState(window.history.state, "", url);
             login();
             return;
         }
-
-        activeRequest.current?.abort();
-        const controller = new AbortController();
-        activeRequest.current = controller;
-        setHtml("");
-        setError(null);
-        setIsGenerating(true);
-
-        try {
-            const response = await fetch("/api/generate", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${apiKey}`,
-                },
-                body: JSON.stringify({ prompt: trimmedPrompt, model }),
-                signal: controller.signal,
-            });
-
-            if (!response.ok) {
-                const body = stripHtml(await response.text());
-                throw new Error(
-                    body || `Generation failed with ${response.status}`,
-                );
-            }
-
-            setHtml(await response.text());
-        } catch (err) {
-            if (err instanceof DOMException && err.name === "AbortError") {
-                return;
-            }
-            setError(errorMessage(err));
-        } finally {
-            if (activeRequest.current === controller) {
-                activeRequest.current = null;
-                setIsGenerating(false);
-            }
-        }
-    }
-
-    function stopGenerating() {
-        activeRequest.current?.abort();
-        activeRequest.current = null;
-        setIsGenerating(false);
+        return run(trimmedPrompt, { model, systemPrompt: SYSTEM_PROMPT });
     }
 
     const generateButton = (
         <Button
             type={apiKey ? "submit" : "button"}
             size="lg"
-            disabled={!prompt.trim() || !isHydrated}
-            onClick={apiKey ? undefined : () => login()}
+            disabled={!prompt.trim()}
+            onClick={apiKey ? undefined : () => void generate()}
         >
             Generate
         </Button>
@@ -269,6 +236,7 @@ export function App() {
                                         <TabButton
                                             key={item.id}
                                             size="sm"
+                                            aria-pressed={item.id === model}
                                             active={item.id === model}
                                             onClick={() => setModel(item.id)}
                                             disabled={isGenerating}
@@ -288,11 +256,12 @@ export function App() {
                                 <div className="min-h-6">
                                     {error ? (
                                         <Text
+                                            role="alert"
                                             size="sm"
                                             tone="strong"
                                             className="text-intent-danger-text"
                                         >
-                                            {error}
+                                            {error.message}
                                         </Text>
                                     ) : null}
                                 </div>
@@ -303,7 +272,10 @@ export function App() {
                                             type="button"
                                             size="lg"
                                             intent="danger"
-                                            onClick={stopGenerating}
+                                            onClick={(event) => {
+                                                event.preventDefault();
+                                                cancel();
+                                            }}
                                         >
                                             Stop
                                         </Button>
@@ -325,6 +297,16 @@ export function App() {
 
                     <PreviewPanel html={html} isGenerating={isGenerating} />
                 </section>
+                <a
+                    href="https://pollinations.ai/?ref=badge"
+                    className="self-center"
+                >
+                    <img
+                        src={madeWithBadge}
+                        alt="Made with pollinations.ai"
+                        width="200"
+                    />
+                </a>
             </main>
         </div>
     );

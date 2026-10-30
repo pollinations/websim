@@ -1,60 +1,84 @@
 # Websim
 
-Worker-backed BYOP app for generating shareable single-file HTML pages with Pollinations.
+[![Made with pollinations.ai](https://cdn.jsdelivr.net/npm/@pollinations/ui@0.1.0-alpha.25/dist/brand/badge-made-with.svg)](https://pollinations.ai/?ref=badge)
 
-## Local Development
+Generate, preview and save single-file HTML pages using your own Pollinations Pollen.
+The browser uses the published `@pollinations/sdk` and `@pollinations/ui` packages;
+there are no local package links, monorepo imports or app-specific backend.
 
-```bash
+## Local development
+
+Use Node.js 24:
+
+```sh
 npm ci
 npm run dev
 ```
 
-The Worker runs on `http://localhost:16386` and serves the Vite-built app from `dist`.
-Dependencies come from npm; no Pollinations monorepo checkout is required.
-Build the frontend with `npm run build`.
-Run `npm run typecheck` to check the frontend types.
+Open `http://localhost:16386/`. Use `localhost` for the registered login callback.
+`npm run typecheck`, `npm test` and `npm run build` check the app. `npm run preview`
+serves the production build on the same port. With an existing API key supplied
+securely as `POLLINATIONS_API_KEY`, `npm run test:live` checks real generation
+through the published SDK for every model choice; it consumes Pollen.
 
-## Routes
+For browser checks, install Chromium with `npx playwright install chromium`,
+start `npm run preview`, and run `npm run test:browser` with the same securely
+supplied test key. This checks real generation, cancellation, legacy links,
+PKCE requests, Save/Open isolation, mobile layout and disconnect. It also saves
+an unauthenticated catalog screenshot to `screenshots/websim.png`.
 
-- `/` serves the React app shell using `@pollinations/sdk` and `@pollinations/ui`.
-- `/api/generate` accepts `POST { "prompt": "...", "model": "openai-fast" }` and returns generated HTML.
-- `/{prompt}/?model=openai-fast` is a legacy generation URL and requires `Authorization: Bearer ...`.
-- `/api/health` returns Worker configuration health without exposing tokens.
+![Websim app screenshot](screenshots/websim.png)
 
-## Auth
+## Login and generated pages
 
-The frontend uses the publishable app key `pk_wYCqFfSdCXZL8UBW`.
+The published SDK handles PKCE sign-in using public app key
+`pk_wYCqFfSdCXZL8UBW`. User keys stay in session storage; generation calls the
+Pollinations API directly with the signed-in user's key. The account menu shows
+Pollen and permissions and lets users disconnect.
 
-Generation requires the incoming `Authorization: Bearer ...` header from the BYOP app shell.
+Legacy `/{prompt}/?model=...` browser links now open the app with that prompt
+and an allowed model selected. They normalize to the root callback before login;
+nothing generates until the user chooses Generate. The static app does not serve
+the old `/api/generate`, `/api/health` or bearer-authenticated raw HTML endpoints.
+Machine clients should call the published Pollinations SDK/API directly.
 
-## Deployment
+Both Preview and Open isolate generated scripts in a sandboxed iframe. Save
+exports the generated HTML itself. The page-generation prompt uses inline
+illustrations so saved pages do not require embedded API credentials.
 
-Production deploys run through **Deploy / Cloudflare production** in GitHub Actions,
-always from the `production` branch. Configure the repository variable
-`CLOUDFLARE_ACCOUNT_ID` and the production environment secret
-`CLOUDFLARE_API_TOKEN`. The app itself stores no server-side Pollinations key;
-generation uses each signed-in user's Pollen.
+## Publishing
 
-The deployment token needs **Editor** access only to the existing `websim` Worker.
-The primary address is `https://websim.pollinations.app`. Cloudflare manages its
-custom domain and the exact route `websim.pollinations.app/*` to `websim`, which
-takes precedence over Gen's shared `*.pollinations.app/*` route. Keep these domain
-settings in Cloudflare so CI needs no zone-wide permissions.
+The destination is `https://websim.pollinations.app`. Like any external app:
 
-`websim.pollinations.ai` redirects to `.app` with HTTP 301, preserving the path
-and query string. The existing `websim.myceli.ai` alias remains available.
-The app key's allowed login callbacks must include `https://websim.pollinations.app/`.
+```sh
+npm run build
+polli sites deploy dist --name websim
+```
 
-With the repository variable `AUTO_DEPLOY=true`, pushes to `production` deploy
-automatically. Promote changes from `main` through a PR. The workflow checks the
-app, legacy alias, and old-domain redirect after deployment. Manual dispatch is
-also available from `production`.
+Use the published CLI included in this repository (`npm run deploy` does both).
+The owning account is `polli@pollinations.ai`; Sites requires `account:machines`.
+No Cloudflare credential is needed by the app's final deployment workflow.
 
-For rollback, revert the affected commit and promote it to `production` through
-GitHub Actions. Keep automatic deployments under a single repository's ownership.
+**Deploy / Pollinations production** runs from `production` in GitHub Actions,
+using its environment secret `POLLINATIONS_API_KEY`. Keep `AUTO_DEPLOY` unset until
+cutover is verified; then enable it for pushes to `production`. Promote `main`
+to `production` through a PR. Never put the deployment key in Vite/browser config.
+
+The Sites cutover is still pending. Preserve the current Worker until the Site,
+login callback, generation, prompt links and assets are verified. The exact
+Cloudflare route currently serving `websim.pollinations.app/*` must be handed
+back to Sites, and `.ai` should redirect with paths/query strings preserved.
+Check remaining raw API clients before retiring the old Worker. Rollback restores
+the old route and disables the Sites workflow; retain the old Worker for this.
+
+## Catalog submission
+
+Hosting and the community catalog are separate. Submit the working public URL,
+this repository, a real screenshot, category `build`, platform `web` and language
+`en` through the normal [app-submission form](https://github.com/pollinations/pollinations/issues/new?template=app-submission.yml). The README badge above supplies the
+required credit. Review and approval are still required for a catalog listing.
 
 ## Source and attribution
 
 Extracted from [Pollinations Websim](https://github.com/pollinations/pollinations/tree/daa3b5910521060efb43194677e172044d514097/apps/websim).
-The app's Git history, including its earlier directory names, preserves the
-original authors and commit messages. See [LICENSE](LICENSE).
+Git history preserves the original authors and earlier directory names. See [LICENSE](LICENSE).
